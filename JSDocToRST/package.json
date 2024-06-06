@@ -1,0 +1,12 @@
+{
+    "name": "js_doc_to_rst",
+    "author": "Fergyfive",
+    "version": "0.0.1",
+    "bin": {
+        "js_doc_to_rst": "bin/index.js"
+    },
+    "license": "ISC",
+    "dependencies": {
+        "yargs": "^17.7.2"
+    }
+}
