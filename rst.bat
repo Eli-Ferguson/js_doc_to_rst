@@ -15,4 +15,6 @@ echo %cd%
 
 call node ./JSDocToRST/bin/index.js -c ./JSDocToRST.config.json
 
+@REM call node ./JSDocToRST/bin/js_comments.js -c ./JSDocToRST.config.json
+
 pause

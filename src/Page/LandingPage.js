@@ -3,6 +3,9 @@ import React from 'react'
 /**
  * @path src/Page
  * @description LandingPage
+ * 
+ * @param { String } a - Useless Variable
+ * 
  * @returns {JSX.Element}
  */
 export function LandingPage() {

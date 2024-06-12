@@ -3,6 +3,10 @@
 const fs = require( 'fs' )
 const path = require( 'path' )
 
+const javascript_file_comments = require( './js_comments' )
+
+const defaultTemplates = require( './default_templates' )
+
 function load_files( curr_path, fileTypes, files=[] )
 {
     fs.readdirSync( curr_path ).forEach( file =>
@@ -21,6 +25,20 @@ function load_files( curr_path, fileTypes, files=[] )
         }
     } )
     return files
+}
+
+function prettyPrint( obj )
+{
+    const func_def = obj.function
+    delete func_def._function
+
+    return {
+        file_path: obj.main ? obj.main : obj.alt_path,
+        breakdown: obj.breakDown,
+        function: func_def,
+        headers: obj.headers,
+        inner: obj.inner.map( inner => prettyPrint( inner ) )
+    }
 }
 
 /**
@@ -42,6 +60,7 @@ function get_args()
     const translateArgs = {
         // source:
         source:'source',
+        src:'source',
         s:'source',
         // output:
         output:'output',
@@ -90,57 +109,6 @@ function get_args()
     return defaultArgs
 }
 
-class javascript_file_comments
-{
-    constructor( file_path )
-    {
-        this.file_str = fs.readFileSync( file_path, 'utf8' )
-        
-        // this.comments = this.getComments( this.file_str ).map( comment => comment[ 0 ] )
-        this.comments = this.getComments( this.file_str )
-        this.functions = this.getFunctions( this.file_str )
-
-        this.comments.forEach( func_def =>
-        {
-            const start = func_def.index + func_def[ 0 ].length+2
-            const level = this.get_level( func_def.input, start )
-            console.log( func_def.input.slice( start, level ) )
-        } )
-    }
-
-    getComments(text) {
-        let regex = /\/\*[^*]*\*+(?:[^\/*][^*]*\*+)*\//g
-
-        return [ ...text.matchAll( regex ) ]
-    }
-
-    getFunctions(text) {
-        let regex = /function\s+([^\s(]+)/g
-
-        return [ ...text.matchAll( regex ) ]
-    }
-
-    get_level( text, start, following = '{' )
-    {
-        text = text.slice( start )
-        let end = 0
-        let i = 0
-        let started = false
-        while( i < text.length && end >= 0 )
-        {
-            if( started && end === 0 ) break 
-            if( [ '{', '(', '[' ].includes( text.charAt( i ) ) )
-            {
-                end++
-                if( text.charAt( i ) === following ) started = true
-            }
-            if( [ '}', ')', ']' ].includes( text.charAt( i ) ) ) end--
-            i++
-        }
-        return i + start
-    }
-}
-
 class JSDocToRST
 {
     constructor()
@@ -149,11 +117,54 @@ class JSDocToRST
         this.files = load_files( this.args.source, this.args.fileTypes )
         console.log( 'Files:', this.files )
 
+        this.commentObjs = []
+
         this.files.forEach( file_path =>
         {
-            const new_comment = new javascript_file_comments( file_path )
-            // console.log( 'Comments:', new_comment.comments )
-            // console.log( 'Functions:', new_comment.functions )
+            const new_comment = new javascript_file_comments( { file_path:file_path } )
+
+            if( new_comment.comments.length === 0 ) return
+
+            new_comment.finalComments.map( finalComment =>
+            {
+                this.commentObjs.push(
+                    finalComment.main
+                        ? finalComment
+                        : { ...finalComment, alt_path:path.join( file_path, '..' ).replaceAll( '\\', '/' ) }
+                )
+            } )
+        } )
+
+        // this.commentObjs.forEach( obj => console.log( JSON.stringify( prettyPrint( obj ), null, 2 ) ) )
+
+        this.create_dirs()
+        this.create_comment_files()
+    }
+
+    create_dirs()
+    {
+        this.commentObjs.forEach( obj =>
+        {
+            obj.main
+                ? fs.mkdirSync( path.join( this.args.output, obj.main ), { recursive:true } )
+                : fs.mkdirSync( path.join( this.args.output, obj.alt_path ), { recursive:true } )
+        } )
+    }
+
+    create_comment_files()
+    {
+        this.commentObjs.forEach( obj =>
+        {
+            const file_path = path.join(
+                this.args.output,
+                ( obj.main ? obj.main : obj.alt_path ),
+                ( obj.headers.caller.name ? obj.headers.caller.name : obj.headers.caller.type ) + '_file.rst'
+            )
+            fs.writeFileSync(
+                file_path,
+                defaultTemplates.commentFile( obj ),
+                'utf8'
+            )
         } )
     }
 }
