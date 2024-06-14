@@ -1,1 +1,1 @@
---s ./src/
+sphinx-build -b html "%Doc_Dir%\RST" "%Doc_Dir%\Sphinx"

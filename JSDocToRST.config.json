@@ -1,5 +1,10 @@
 {
     "source":"./src/",
-    "output":"./Docs/",
-    "newKey":true
+    "output":"./Docs/RST/",
+    "verbose":1,
+    "sphinx":{
+        "enable":true,
+        "conda_env":null,
+        "output":"./Docs/Sphinx/"
+    }
 }

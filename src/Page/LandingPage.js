@@ -1,5 +1,7 @@
 import React from 'react'
 
+import NavBar from '../Page/Components/NavBar'
+
 /**
  * @path src/Page
  * @description LandingPage
@@ -20,8 +22,12 @@ export function LandingPage() {
     } )
 
     return (
-        <div>
-            LandingPage
-        </div>
+        <>
+            <NavBar />
+            <div>
+                LandingPage
+            </div>
+        </>
+        
     )
 }

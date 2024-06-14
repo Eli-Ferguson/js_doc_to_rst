@@ -2,6 +2,7 @@
 
 const fs = require( 'fs' )
 const path = require( 'path' )
+const { execSync } = require('child_process')
 
 const javascript_file_comments = require( './js_comments' )
 
@@ -114,31 +115,59 @@ class JSDocToRST
     constructor()
     {
         this.args = get_args()
-        this.files = load_files( this.args.source, this.args.fileTypes )
-        console.log( 'Files:', this.files )
-
-        this.commentObjs = []
-
-        this.files.forEach( file_path =>
+        try
         {
-            const new_comment = new javascript_file_comments( { file_path:file_path } )
+            this.files = load_files( this.args.source, this.args.fileTypes )
+            if( this.args.verbose > 1 ) console.log( 'Files:', this.files )
 
-            if( new_comment.comments.length === 0 ) return
+            this.commentObjs = []
 
-            new_comment.finalComments.map( finalComment =>
+            this.files.forEach( file_path =>
             {
-                this.commentObjs.push(
-                    finalComment.main
-                        ? finalComment
-                        : { ...finalComment, alt_path:path.join( file_path, '..' ).replaceAll( '\\', '/' ) }
-                )
+                const new_comment = new javascript_file_comments( { file_path:file_path } )
+
+                if( new_comment.comments.length === 0 ) return
+
+                new_comment.finalComments.map( finalComment =>
+                {
+                    this.commentObjs.push(
+                        finalComment.main
+                            ? finalComment
+                            : { ...finalComment, alt_path:path.join( file_path, '..' ).replaceAll( '\\', '/' ) }
+                    )
+                } )
             } )
-        } )
 
-        // this.commentObjs.forEach( obj => console.log( JSON.stringify( prettyPrint( obj ), null, 2 ) ) )
+            if( this.args.verbose > 1 ) this.commentObjs.forEach( obj => console.log( JSON.stringify( prettyPrint( obj ), null, 2 ) ) )
+        }
+        catch( error )
+        {
+            throw new Error( `Failed During Comment Generation:\n${ this.args.verbose ? error : '' }` )
+        }
 
-        this.create_dirs()
-        this.create_comment_files()
+        try{
+            this.create_dirs()
+            this.create_comment_files()
+            this.create_index_files()
+        }
+        catch( error )
+        {
+            throw new Error( `Failed During File Creation:\n${ this.args.verbose ? error : '' }` )
+        }
+
+        try{
+            if( this.args?.sphinx?.enable && this.args?.sphinx?.output )
+            {
+                this.create_sphinx_files()
+                this.run_sphinx_build()
+            }
+        }
+        catch( error )
+        {
+            throw new Error( `Failed During Sphinx Build:\n${ this.args.verbose ? error : '' }` )
+        }
+
+        console.log( `\nSuccessfully Generated Documentation: ${ this.args.output }` )
     }
 
     create_dirs()
@@ -162,10 +191,110 @@ class JSDocToRST
             )
             fs.writeFileSync(
                 file_path,
-                defaultTemplates.commentFile( obj ),
+                defaultTemplates.commentFile( file_path, obj ),
                 'utf8'
             )
         } )
+    }
+
+    create_index_files()
+    {
+        function walkDir( dir )
+        {
+            let hasFiles = false
+            let hasIndex = false
+            let discDirs = []
+            fs.readdirSync( dir ).forEach( file =>
+            {
+                const filePath = path.join( dir, file )
+        
+                if ( fs.statSync( filePath ).isDirectory() )
+                {
+                    walkDir( filePath )
+                    discDirs.push( file )
+                }
+                else if( file === 'index.rst' ) hasIndex = true
+                else hasFiles = true
+            } )
+
+            if( !hasIndex )
+            {
+                fs.writeFileSync(
+                    path.join( dir, 'index.rst' ),
+                    defaultTemplates.indexFile(
+                        {
+                            dir: dir.split( path.sep ).pop(),
+                            discDirs: discDirs,
+                            hasFiles: hasFiles
+                        }
+                    ),
+                    'utf8'
+                )
+            }
+        }
+
+        walkDir( this.args.output )
+    }
+
+    create_sphinx_files()
+    {
+        // check if conf.py exists in args.output folder
+
+        if(
+            !fs.existsSync( path.join( this.args.output, 'conf.py' ) )
+            || !fs.existsSync( path.join( this.args.output, 'make.bat' ) )
+            ||!fs.existsSync( path.join( this.args.output, 'Makefile' ) )
+        )
+        {
+            if( this.args.verbose ) console.log( '\nMissing Sphinx Files:' )
+        
+            if( !fs.existsSync( path.join( this.args.output, 'conf.py' ) ) )
+            {
+                if( this.args.verbose ) console.log( '\tCreating conf.py...' )
+                fs.writeFileSync(
+                    path.join( this.args.output, 'conf.py' ),
+                    defaultTemplates.confPy( this.args.sphinx ),
+                    'utf8'
+                )
+            }
+
+            if( !fs.existsSync( path.join( this.args.output, 'make.bat' ) ) )
+            {
+                if( this.args.verbose ) console.log( '\tCreating make.bat...' )
+                fs.writeFileSync(
+                    path.join( this.args.output, 'make.bat' ),
+                    defaultTemplates.makeBat( this.args.sphinx ),
+                    'utf8'
+                )
+            }
+
+            if( !fs.existsSync( path.join( this.args.output, 'Makefile' ) ) )
+            {
+                if( this.args.verbose ) console.log( '\tCreating Makefile...' )
+                fs.writeFileSync(
+                    path.join( this.args.output, 'Makefile' ),
+                    defaultTemplates.makeFile( this.args.sphinx ),
+                    'utf8'
+                )
+            }
+
+            if( this.args.verbose ) console.log( '\n' )
+        }
+    }
+
+    run_sphinx_build() {
+
+        let command = ''
+
+        // Check if a Conda environment was provided
+        if ( this.sphinx?.conda_env)
+        {
+            if ( process.platform === 'win32' ) command += `call activate ${ this.sphinx.conda_env } &&` // On Windows
+            else command += `source activate ${ this.sphinx.conda_env } &&` // On Unix-like systems (Linux, macOS)
+        }
+        command += `sphinx-build -b html ${ path.resolve( this.args.output ) } ${ path.resolve( this.args.sphinx.output ) }`
+
+        execSync( command, { stdio: this.args.verbose ? 'inherit' : 'pipe' } )
     }
 }
 
