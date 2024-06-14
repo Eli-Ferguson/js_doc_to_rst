@@ -191,7 +191,10 @@ class JSDocToRST
             )
             fs.writeFileSync(
                 file_path,
-                defaultTemplates.commentFile( file_path, obj ),
+                defaultTemplates.commentFile(
+                    obj.headers.caller.name ? obj.headers.caller.name : obj.headers.caller.type,
+                    obj
+                ),
                 'utf8'
             )
         } )
@@ -287,13 +290,14 @@ class JSDocToRST
         let command = ''
 
         // Check if a Conda environment was provided
-        if ( this.sphinx?.conda_env)
+        if ( this.args.sphinx?.conda_env)
         {
-            if ( process.platform === 'win32' ) command += `call activate ${ this.sphinx.conda_env } &&` // On Windows
-            else command += `source activate ${ this.sphinx.conda_env } &&` // On Unix-like systems (Linux, macOS)
+            if ( process.platform === 'win32' ) command += `call activate ${ this.args.sphinx.conda_env } && ` // On Windows
+            else command += `source activate ${ this.args.sphinx.conda_env } && ` // On Unix-like systems (Linux, macOS)
         }
         command += `sphinx-build -b html ${ path.resolve( this.args.output ) } ${ path.resolve( this.args.sphinx.output ) }`
 
+        if( this.args.verbose ) console.log( `\nRunning Sphinx Build: ${ command }` )
         execSync( command, { stdio: this.args.verbose ? 'inherit' : 'pipe' } )
     }
 }

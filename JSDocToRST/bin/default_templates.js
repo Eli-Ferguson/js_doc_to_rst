@@ -1,4 +1,4 @@
-function commentFile( file_path, comment )
+function commentFile( file_label, comment )
 {
     // console.log( 'Comment:\n', JSON.stringify( comment, null, 2 ), '\n' )
     function recursiveBuild( comment, _tab = 0 )
@@ -74,12 +74,10 @@ function commentFile( file_path, comment )
     const path = comment.main || comment.alt_path
         ?`${ comment.main ? comment.main : comment.alt_path  }`
         : ''
-    
-    const file_label = file_path.slice( 0, -9 ).replaceAll( /(\/|\\)/g, '/' )
 
     return `` +
         `${ path ? '.. _' + path.replaceAll( '/', '_') + ':\n\n' : '' }` +
-        `${ file_label }\n${ Array.from( { length: file_label.length }, () => '=' ).join( '' ) }\n\n` +
+        `${ file_label.replaceAll( /(\/|\\)/g, '/' ) }\n${ Array.from( { length: file_label.length }, () => '=' ).join( '' ) }\n\n` +
         `.. toctree::\n\t:hidden:\n\n` +
         recursiveBuild( comment )
 }

@@ -27,6 +27,10 @@ if exist "%Doc_Dir%" (
 
 timeout 1 > NUL
 
+call node ./JSDocToRST/bin/index.js -c ./JSDocToRST.config.json || echo Failed on JSDocToRST & exit /b
+exit /b
+pause
+
 cd %~dp0/_js_doc_to_rst
 echo %cd%
 
@@ -40,7 +44,6 @@ echo Reinstalled
 
 call npx js_doc_to_rst -c ./JSDocToRST.config.json
 
-@REM call node ./JSDocToRST/bin/index.js -c ./JSDocToRST.config.json || echo Failed on JSDocToRST & exit /b
 
 @REM call node ./JSDocToRST/bin/js_comments.js -c ./JSDocToRST.config.json
 
