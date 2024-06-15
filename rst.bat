@@ -1,7 +1,7 @@
 echo off
 
 REM Define the list of directories to delete
-set DIRS_TO_DELETE="%~dp0Docs\RST" "%~dp0Docs\Sphinx"
+set DIRS_TO_DELETE="%~dp0TestDocs\RST" "%~dp0TestDocs\Sphinx" "%~dp0Docs\RST\src" "%~dp0Docs\Sphinx"
 
 REM Iterate over the list and delete each directory
 for %%d in (%DIRS_TO_DELETE%) do (
@@ -27,7 +27,8 @@ if exist "%Doc_Dir%" (
 
 timeout 1 > NUL
 
-call node ./JSDocToRST/bin/index.js -c ./JSDocToRST.config.json || echo Failed on JSDocToRST & exit /b
+call node ./JSDocToRST/bin/index.js -c ./JSDocToRST.config.json || echo Failed on JSDocToRST && exit /b
+call node ./JSDocToRST/bin/index.js -c ./Test_JSDocToRST.config.json || echo Failed on JSDocToRST && exit /b
 exit /b
 pause
 
@@ -42,8 +43,7 @@ echo Reinstalling js_doc_to_rst
 call npm i --save-dev ./JSDocToRST/ >nul 2>&1
 echo Reinstalled
 
-call npx js_doc_to_rst -c ./JSDocToRST.config.json
-
+call npx js_doc_to_rst -c ./Test_JSDocToRST.config.json
 
 @REM call node ./JSDocToRST/bin/js_comments.js -c ./JSDocToRST.config.json
 

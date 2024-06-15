@@ -1,3 +1,17 @@
+function basicColors( colorsList = [ { name: 'red', value: 'red' }, { name: 'green', value: 'green' }, { name: 'blue', value: 'blue' } ] )
+{
+    const colors = [
+        colorsList
+            .map( color => `\t<style> .${ color.name } {color:${ color.value }} </style>\n` )
+            .join( '' ),
+        colorsList
+            .map( color => `.. role:: ${ color.name }\n\n` )
+            .join( '' )
+    ].join( '\n' )
+
+    return `${ colors ? '.. raw:: html\n\n' + colors + '\n' : ''}`
+}
+
 function commentFile( file_label, comment )
 {
     // console.log( 'Comment:\n', JSON.stringify( comment, null, 2 ), '\n' )
@@ -14,6 +28,8 @@ function commentFile( file_label, comment )
                 .filter( item => { return item && item.length > 0 } )
                 .join( ' ' )
             }`
+        
+        const underscoredTitle = Array.from( { length: title.length }, () => '-' ).join( '' )
 
         const description = comment.breakDown.description
             ? comment.breakDown.description
@@ -26,7 +42,7 @@ function commentFile( file_label, comment )
         {
             let retStr = ''
 
-            if( param.varType ) retStr += ' { ' + param.varType + ' }'
+            if( param.varType ) retStr += ' :blue:\`{ ' + param.varType + ' }\`'
 
             if( param.varName && param.varValue ) retStr += ' ' + param.varName + ' - ' + param.varValue
             else if( param.varName && !param.varValue) retStr += ' ' + param.varName
@@ -41,9 +57,9 @@ function commentFile( file_label, comment )
                 return comment.breakDown[ key ].map( param => {
                     return '' +
                         `\t${ tab }` +
-                        `@${ key }` +
+                        `*${ key }*` +
                         `${strFmt( param )}`
-                } )
+                } ).join( '\n\n' )
             } ).join( '\n\n' )
 
         const returns = comment.breakDown.returns
@@ -51,9 +67,9 @@ function commentFile( file_label, comment )
                 .map( comment => {
                     return '' +
                         `\t${ tab }` +
-                        `@returns` +
+                        `*Returns*` +
                         [
-                            `${ comment.varType ? ' { ' + comment.varType + ' }' : '' }`,
+                            `${ comment.varType ? ' :blue:\`{ ' + comment.varType + ' }\`' : '' }`,
                             `${ comment.varName ? ' ' + comment.varName : '' }`,
                             `${ comment.varValue ? ' ' + comment.varValue : '' }`
                         ].filter( item => item.length > 0 ).join( ' ' )
@@ -61,7 +77,14 @@ function commentFile( file_label, comment )
             : ''
 
         return '' +
-        `${ title ? tab + title + ' ()\n\n' : '' }` +
+        `${
+            title
+                ? _tab === 0
+                    ? tab + title + '\n' + tab + underscoredTitle + '\n\n'
+                    // : tab + '\`\`' + title + '\`\`\n\n'
+                    : tab + '**' + title + '**\n\n'
+                : ''
+        }` +
         `${ description ? '\t' + tab + description + '\n\n' : '' }` +
         `${ others ? others + '\n\n' : '' }` +
         `${ returns ? returns + '\n\n' : '' }` +
@@ -75,11 +98,60 @@ function commentFile( file_label, comment )
         ?`${ comment.main ? comment.main : comment.alt_path  }`
         : ''
 
-    return `` +
-        `${ path ? '.. _' + path.replaceAll( '/', '_') + ':\n\n' : '' }` +
+    
+
+    return basicColors() +
+        `${ path ? '.. _' + path.replaceAll( /(\/|\\)/g, '_') + ':\n\n' : '' }` +
         `${ file_label.replaceAll( /(\/|\\)/g, '/' ) }\n${ Array.from( { length: file_label.length }, () => '=' ).join( '' ) }\n\n` +
-        `.. toctree::\n\t:hidden:\n\n` +
         recursiveBuild( comment )
+}
+
+function initialIndexFile( args )
+{
+    let retStr = `` +
+    `.. _${ args.dir }:\n\n` +
+    basicColors()
+
+    const welcome = `Welcome Page For Documentation`
+    const welcomeUnderline = `${ Array.from( { length: welcome.length }, () => '=' ).join( '' ) }`
+
+    const description = args?.parentArgs?.indexDescription
+        ? args.parentArgs.indexDescription
+        : args?.parentArgs?.sphinx?.sphinx_designs
+            ? `Documentation for: :blue:\`${ args.parentArgs.source }\`\n\tBuilt Using: Sphinx Design`
+            : `Documentation for: :blue:\`${ args.parentArgs.source }\`\n\tBuilt Using: Sphinx`
+
+    retStr += `${ welcome }\n${ welcomeUnderline }\n\n${ description }\n\n`
+
+    if( args.discDirs.length > 0 )
+    {
+        retStr += args.discDirs.map( dir =>
+        {
+            return `.. toctree::\n\t:hidden:\n\t:glob:\n\n` +
+            `\t${ dir.replaceAll( /(\/|\\)/g, '/' ) }/index\n`
+        } ).join( '\n' )
+
+        if( args?.parentArgs?.sphinx?.sphinx_designs )
+        {
+            args.discDirs.forEach( dir =>
+            {
+                retStr += `\n` +
+                `.. card::\n` +
+                `\t:link-type: any\n` +
+                `\t:link: ${ dir.replaceAll( /(\/|\\)/g, '/' ) }\n\n` +
+                `\t${ dir.replaceAll( /(\/|\\)/g, '/' ) }\n`
+            } )
+        }
+        else
+        {
+            args.discDirs.forEach( dir =>
+            {
+                retStr += `\n- See :ref:\`${ dir.replaceAll( /(\/|\\)/g, '/' ) }\`\n`
+            } )
+        }
+    }
+
+    return retStr
 }
 
 function indexFile( args )
@@ -97,6 +169,25 @@ function indexFile( args )
         {
             retStr += `\t${ dir.replaceAll( /(\/|\\)/g, '/' ) }/index\n`
         } )
+
+        if( args?.sphinx?.sphinx_designs )
+        {
+            args.discDirs.forEach( dir =>
+            {
+                retStr += `\n` +
+                `.. card::\n` +
+                `\t:link-type: any\n` +
+                `\t:link: ${ dir.replaceAll( /(\/|\\)/g, '/' ) }\n\n` +
+                `\t${ dir.replaceAll( /(\/|\\)/g, '/' ) }\n`
+            } )
+        }
+        else
+        {
+            args.discDirs.forEach( dir =>
+            {
+                retStr += `\n- See :ref:\`${ dir.replaceAll( /(\/|\\)/g, '/' ) }\`\n`
+            } )
+        }
     }
 
     return retStr
@@ -207,6 +298,7 @@ help:
 
 module.exports = {
     commentFile,
+    initialIndexFile,
     indexFile,
     confPy,
     makeBat,

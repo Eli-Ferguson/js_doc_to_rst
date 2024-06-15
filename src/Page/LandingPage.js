@@ -10,8 +10,8 @@ import NavBar from '../Page/Components/NavBar'
  * 
  * @returns {JSX.Element}
  */
-export function LandingPage() {
-
+export function LandingPage()
+{
     /**
      * @description Prints "LandingPage"
      * @watching { None }
@@ -28,6 +28,5 @@ export function LandingPage() {
                 LandingPage
             </div>
         </>
-        
     )
 }

@@ -1,0 +1,11 @@
+{
+    "source":"./src/",
+    "output":"./TestDocs/RST/",
+    "verbose":0,
+    "sphinx":{
+        "enable":true,
+        "sphinx_designs":false,
+        "conda_env":"JSDocToRST",
+        "output":"./TestDocs/Sphinx/"
+    }
+}

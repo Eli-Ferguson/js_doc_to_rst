@@ -192,8 +192,9 @@ class javascript_file_comments
         // Regex pattern to capture the parts
         const regex = /^\s*@\s*(\w+)\s*\{\s*([^}]+?)\s*\}\s*(\w+)(?:\s*-\s*)?(.*)$/
         const regexOptionalDesc = /^\s*@\s*(\w+)\s*\{\s*([^}]+?)\s*\}\s*(?:\w+)?$/
-        const descriptionRegex = /^@(\w+)\s*(.*)\s*$/;
+        const descriptionRegex = /^\s*@(\w+)\s*(.*)\s*$/
 
+        //TODO: Actually set lastType
         let lastType = undefined
         // Process each line to extract the comments
         for (let line of commentLines) {
@@ -263,11 +264,12 @@ class javascript_file_comments
     {
         function hasPath( breakDown )
         {
-            for( let i in breakDown )
+            if( 'path' in breakDown )
             {
-                if( breakDown[ i ].type === 'path' ) return breakDown[ i ].varValue
+                console.assert( breakDown[ 'path' ].length === 1, 'Path not defined or multiple definitions' )
+                return breakDown[ 'path' ][ 0 ].varValue
             }
-            return false
+            else return false
         }
 
         function buildNestedList(start, end, commentList)

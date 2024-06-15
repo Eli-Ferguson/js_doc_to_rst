@@ -1,0 +1,11 @@
+.bd-main .bd-content .bd-article-container {
+    max-width: 100%;  /* default is 60em */
+}
+
+.bd-header {
+    margin: 0 auto;
+}
+.bd-header__inner {
+    max-width: 100%;
+    margin: 0 auto;
+}

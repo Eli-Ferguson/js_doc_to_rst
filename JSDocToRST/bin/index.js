@@ -142,7 +142,7 @@ class JSDocToRST
         }
         catch( error )
         {
-            throw new Error( `Failed During Comment Generation:\n${ this.args.verbose ? error : '' }` )
+            throw new Error( `Failed During Comment Generation:\n${ error }` )
         }
 
         try{
@@ -152,7 +152,7 @@ class JSDocToRST
         }
         catch( error )
         {
-            throw new Error( `Failed During File Creation:\n${ this.args.verbose ? error : '' }` )
+            throw new Error( `Failed During File Creation:\n${ error }` )
         }
 
         try{
@@ -164,7 +164,7 @@ class JSDocToRST
         }
         catch( error )
         {
-            throw new Error( `Failed During Sphinx Build:\n${ this.args.verbose ? error : '' }` )
+            throw new Error( `Failed During Sphinx Build:\n${ error }` )
         }
 
         console.log( `\nSuccessfully Generated Documentation: ${ this.args.output }` )
@@ -174,6 +174,7 @@ class JSDocToRST
     {
         this.commentObjs.forEach( obj =>
         {
+            console.log( obj.main, obj.alt_path )
             obj.main
                 ? fs.mkdirSync( path.join( this.args.output, obj.main ), { recursive:true } )
                 : fs.mkdirSync( path.join( this.args.output, obj.alt_path ), { recursive:true } )
@@ -189,6 +190,7 @@ class JSDocToRST
                 ( obj.main ? obj.main : obj.alt_path ),
                 ( obj.headers.caller.name ? obj.headers.caller.name : obj.headers.caller.type ) + '_file.rst'
             )
+            console.log( file_path )
             fs.writeFileSync(
                 file_path,
                 defaultTemplates.commentFile(
@@ -202,7 +204,7 @@ class JSDocToRST
 
     create_index_files()
     {
-        function walkDir( dir )
+        function walkDir( dir, args )
         {
             let hasFiles = false
             let hasIndex = false
@@ -213,30 +215,44 @@ class JSDocToRST
         
                 if ( fs.statSync( filePath ).isDirectory() )
                 {
-                    walkDir( filePath )
+                    if( file.startsWith( '__' ) ) return
+                    walkDir( filePath, args )
                     discDirs.push( file )
                 }
                 else if( file === 'index.rst' ) hasIndex = true
                 else hasFiles = true
             } )
 
+
             if( !hasIndex )
             {
                 fs.writeFileSync(
                     path.join( dir, 'index.rst' ),
-                    defaultTemplates.indexFile(
-                        {
-                            dir: dir.split( path.sep ).pop(),
-                            discDirs: discDirs,
-                            hasFiles: hasFiles
-                        }
-                    ),
+                    dir === args.output
+                        ?
+                        defaultTemplates.initialIndexFile(
+                            {
+                                dir: dir.split( path.sep ).pop(),
+                                discDirs: discDirs,
+                                hasFiles: hasFiles,
+                                parentArgs: args
+                            }
+                        )
+                        :
+                        defaultTemplates.indexFile(
+                            {
+                                dir: dir.split( path.sep ).pop(),
+                                discDirs: discDirs,
+                                hasFiles: hasFiles,
+                                parentArgs: args
+                            }
+                        ),
                     'utf8'
                 )
             }
         }
 
-        walkDir( this.args.output )
+        walkDir( this.args.output, this.args )
     }
 
     create_sphinx_files()

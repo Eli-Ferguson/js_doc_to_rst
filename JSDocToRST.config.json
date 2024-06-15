@@ -4,6 +4,7 @@
     "verbose":1,
     "sphinx":{
         "enable":true,
+        "sphinx_designs":true,
         "conda_env":"JSDocToRST",
         "output":"./Docs/Sphinx/"
     }
